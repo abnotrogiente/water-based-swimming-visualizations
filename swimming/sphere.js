@@ -9,7 +9,7 @@ class Sphere {
      * @param {GL.Vector} center 
      * @param {float} radius 
      */
-    constructor(center, radius) {
+    constructor(center, radius, color = new GL.Vector(1, 1, 1), buoyancyFactor = null) {
         this.initCenter = new GL.Vector(center.x, center.y, center.z);
         this.center = new GL.Vector(center.x, center.y, center.z);
         this.oldCenter = new GL.Vector(center.x, center.y, center.z);
@@ -23,6 +23,8 @@ class Sphere {
         this.mesh = GL.Mesh.sphere({ detail: 10 });
         this.followTarget = false;
         this.showStreak = false;
+        this.buoyancyFactor = buoyancyFactor;
+        this.color = color;
     }
 
     spawnSplashes(dt) {
@@ -30,10 +32,21 @@ class Sphere {
         const speed = this.center.subtract(this.oldCenter).multiply(1. / dt);
         const phi = speed.z > 0 ? -Math.PI / 2 : Math.PI / 2;
         const v_sq = speed.dot(speed);
-        const splashPos = this.center.subtract(this.velocity.unit());
+        let splashPos = this.center.subtract(this.velocity.unit());
+        if (config.isSceneSynchronizedSwimming()) splashPos = this.center.clone();
         splashPos.y = .15;
-        if (config.params.simulation.splashes.enabled && this.center.x < 100 && Math.abs(this.center.y) <= this.radius) config.splashParticles.spawnSplash(splashPos, phi, Math.sqrt(v_sq), config.params.simulation.splashes.strengthThreshold);
-        if (config.params.visualizations.showStreaks && this.showStreak && this.velocity.length() > 0.01) config.splashParticles.spawnSplash(this.center, 0., (this.velocity.length() - 1.6) / 0.9, 0, true);
+        if (!config.isSceneSynchronizedSwimming() && config.params.simulation.splashes.enabled && this.center.x < 100 && Math.abs(this.center.y) <= this.radius) config.splashParticles.spawnSplash(splashPos, phi, Math.sqrt(v_sq), config.params.simulation.splashes.strengthThreshold, {});
+        let streakColor = (this.velocity.length() - 1.6) / 0.9;
+        const particleOptions = { fixed: true };
+        if (config.isSceneSynchronizedSwimming()) {
+            particleOptions.shrinking = 0.02;
+        }
+        else {
+            const col = new GL.Vector(streakColor, 0., 1. - streakColor);
+            col.multiply(1. / col.max());
+            particleOptions.color = col;
+        }
+        if (config.params.visualizations.showStreaks && this.showStreak && this.velocity.length() > 0.01) config.splashParticles.spawnSplash(this.center, 0., streakColor, 0, particleOptions);
     }
 
     /**
@@ -46,7 +59,8 @@ class Sphere {
         this.moved = false;
         if (!this.cinematic) {
             const percentUnderWater = Math.max(0, Math.min(1, (this.radius - this.center.y) / (2 * this.radius)));
-            const floatingForce = GRAVITY.multiply(-config.params.simulation.buoyancyFactor * this.mass * percentUnderWater); // 1.1 before // then 1.35
+            const buoyancyFactor = this.buoyancyFactor ? this.buoyancyFactor : config.params.simulation.buoyancyFactor;
+            const floatingForce = GRAVITY.multiply(-buoyancyFactor * this.mass * percentUnderWater); // 1.1 before // then 1.35
             const drag = this.velocity.unit().multiply(-1000 * this.radiusSquared * percentUnderWater * this.velocity.dot(this.velocity)); // 1000 before
             this.addForce(drag);
             this.addForce(floatingForce);

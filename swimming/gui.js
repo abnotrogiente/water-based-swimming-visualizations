@@ -20,10 +20,8 @@ const createGUI = function (gl, reset) {
     // });
     visualizationsFolder.add(config, "useConfigFile").name('use configuration file');
     // toggle event editor (timeline) visibility
-    const timelineToggle = { showTimeline: true };
-    visualizationsFolder.add(timelineToggle, "showTimeline").name('show event timeline').onChange((v) => {
-        const el = document.getElementById('event-editor');
-        if (el) el.style.display = v ? 'block' : 'none';
+    visualizationsFolder.add(config, "showTimeline").name('show event timeline').listen().onChange((v) => {
+        config.hideEditorPanel(v);
     });
     visualizationsFolder.add(config.params.visualizations, "showFlags").name('show flags').listen();
     visualizationsFolder.add(config.params.visualizations, "showStreaks").name('show streaks').listen();
@@ -44,8 +42,9 @@ const createGUI = function (gl, reset) {
 
     const videoFolder = gui.addFolder("video");
     videoFolder.close();
-    videoFolder.add(config.params.video, "thresholdBlending").name("threshold blending");
-    videoFolder.add(config.params.video, "blendingThreshold", .1, .5).name("blending threshold");
+    videoFolder.add(config.params.video, "opacity").name("opacity").listen();
+    videoFolder.add(config.params.video, "thresholdBlending").name("threshold blending").listen();
+    videoFolder.add(config.params.video, "blendingThreshold", .1, 1.5).name("blending threshold");
     videoFolder.add(config.params.video, 'show').name("show").listen();
     videoFolder.add(config.params.video, "hideObstructions").name("hide obstructions");
     videoFolder.add(config.params.video, "hideObstructionThreshold", 0., 0.5).name("obstructions threshold");
@@ -71,6 +70,7 @@ const createGUI = function (gl, reset) {
 
     const simulationFolder = gui.addFolder("Simulation");
     simulationFolder.close();
+    simulationFolder.add(config.params.simulation, "showFloaters").name("show floaters").listen();
     simulationFolder.add(config.params.simulation, "optimized").name("optimized").listen();
     simulationFolder.add(config.params.simulation.poolSize, 'x', 1, 25).name('pool width').onChange(function (value) { reset(); }).listen();
     simulationFolder.add(config.params.simulation.poolSize, 'z', 1, 50).name('pool height').onChange(function (value) { reset(); }).listen();

@@ -347,6 +347,10 @@ class Video {
         // }
         
         vec3 waterColor = vec3(.294, .812, 1.);
+
+        vec3 waterColor1 = vec3(.39, .98, .9);
+        vec3 waterColor2 = vec3(.08, .57, .59);
+
         float r = opacity;
         if (thresholdBlending) {
             if (length(waterColor - texelColor.rgb) < blendingThreshold ||

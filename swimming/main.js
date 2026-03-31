@@ -432,7 +432,7 @@ window.onload = function () {
       else config.stopDemo();
     }
     else if (e.which == 'Q'.charCodeAt(0)) {
-      config.chronoPhotography();
+      config.chronoPhotography({});
     }
     else if (e.which == 'R'.charCodeAt(0)) {
       config.setScene("100m freestyle").then(() => config.startRace());
@@ -488,6 +488,7 @@ window.onload = function () {
 
     // Update the water simulation and graphics
     for (let swimmer of config.swimmers) swimmer.update(dt);
+    config.updateFloaters(dt);
     config.water.updateSpheres(dt);
     for (let i = 0; i < config.params.numSteps; i++) {
       config.water.stepSimulation(dt);
@@ -531,6 +532,8 @@ window.onload = function () {
     const y = gl.canvas.height - h;
     gl.viewport(x, y, w, h);
     renderer.renderWater(config.water, cubemap, config.params.visualizations.shadow);
+    if (config.isSceneSynchronizedSwimming() && (config.params.visualizations.showStreaks || config.params.simulation.splashes.enabled)) config.splashParticles.draw({});
+
     renderer.renderSpheres(config.water);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -575,10 +578,12 @@ window.onload = function () {
     renderer.renderWater(config.water, cubemap, config.params.visualizations.shadow);
     // gl.matrixMode(gl.PROJECTION);
     // console.log("MVM : " + gl.projectionMatrix.m[0]);
-    if (config.params.swimmers.showSpheres) renderer.renderSpheres(config.water);
+    renderer.renderSpheres(config.water);
     // Swimmer.attributes.draw();
     gl.disable(gl.DEPTH_TEST);
-    if (config.params.visualizations.showStreaks || config.params.simulation.splashes.enabled) config.splashParticles.draw();
+    const particlesOption = {};
+    // if (config.isSceneSynchronizedSwimming()) particlesOption.showStreaks = false;
+    if (config.params.visualizations.showStreaks || config.params.simulation.splashes.enabled) config.splashParticles.draw(particlesOption);
     config.renderVideo();
     if (config.params.chronoPhotography.available) drawChronoPhotography();
 

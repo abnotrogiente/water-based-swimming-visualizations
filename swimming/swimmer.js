@@ -160,12 +160,30 @@ class Swimmer {
         if (start) {
             this.body.cinematic = false;
             this.useGravity = true;
-            this.body.center = new GL.Vector(this.startingPoint.x, 0, -config.params.simulation.poolSize.z / 2.);
+            if (!this.useTracking) this.body.center = new GL.Vector(this.startingPoint.x, 0, -config.params.simulation.poolSize.z / 2.);
+            else this.moveToBeginning();
         }
         else {
             this.body.velocity = new GL.Vector(0, 0, 0);
             this.body.center = new GL.Vector(this.startingPoint.x, 0, 0);
         }
+    }
+
+    #getEventPosition(event) {
+        let z = parseFloat(event[Z_KEY]);
+        let x = this.body.center.x;
+        if (config.isSceneSynchronizedSwimming()) {
+            z = config.params.simulation.poolSize.z - z * 30 / 25;
+            if (event[X_KEY]) x = parseFloat(event[X_KEY]) - config.params.simulation.poolSize.x / 2;
+        }
+        z -= config.params.simulation.poolSize.z / 2;
+        return new GL.Vector(x, 1., z);
+    }
+
+    moveToBeginning() {
+        if (!this.useTracking) console.warn("tried to use tracking on untracked swimmer");
+        const firstEvent = this.data[0];
+        this.body.center = this.#getEventPosition(firstEvent);
     }
 
     hasFinished() {
@@ -179,6 +197,7 @@ class Swimmer {
     }
 
     setCurrentDataIndex() {
+        console.log("set current data index");
         this.currendDataIndex = 0;
         if (!this.data) return;
         while (this.data[this.currendDataIndex] && this.data[this.currendDataIndex][TIME_KEY] < config.getRaceTime()) this.currendDataIndex++;
@@ -190,6 +209,11 @@ class Swimmer {
                 if (dist > D) z = 2 * D - z;
                 z -= D / 2;
                 const pos = this.body.center;
+                let x = pos.x;
+                if (config.isSceneSynchronizedSwimming()) {
+                    //TODO z
+                    x = parseFloat(this.data[this.currendDataIndex][X_KEY]) - config.params.simulation.poolSize.x / 2;
+                }
                 this.body.move(new GL.Vector(pos.x, pos.y, z));
                 const vz = Math.sign(50 - dist) * .1;
                 this.body.velocity = new GL.Vector(0, 0, vz);
@@ -239,6 +263,9 @@ class Swimmer {
         // console.log("\n\n");
         if (this.hasReacted && this.useTracking && this.currendDataIndex < this.data.length && this.data[this.currendDataIndex][TIME_KEY] < time) {
             // console.log("enter handle tracking");
+            // if (this.currendDataIndex == 0) {
+            //     this.body.center.z = 0.;
+            // }
 
             this.setDamping(this.data[this.currendDataIndex]);
 
@@ -248,13 +275,17 @@ class Swimmer {
             const nextData = this.data[this.currendDataIndex + 1];
             if (this.currendDataIndex + 1 < this.data.length) {
                 nextDistanceTarget = parseFloat(nextData[Z_KEY]);
-                // if (nextData[X_KEY]) nextXTarget = parseFloat(nextData[X_KEY]);
+                if (config.isSceneSynchronizedSwimming()) {
+                    nextDistanceTarget = config.params.simulation.poolSize.z - nextDistanceTarget * 30 / 25;
+                    if (nextData[X_KEY]) nextXTarget = parseFloat(nextData[X_KEY]) - config.params.simulation.poolSize.x / 2;
+                }
                 // console.log("next distance target : " + nextDistanceTarget);
                 nextEventTime = parseFloat(nextData[TIME_KEY]);
             }
             const D = config.params.simulation.poolSize.z;
             let y = -this.body.radius / 2;
             const currentEvent = this.data[this.currendDataIndex][EVENT_KEY];
+
             if (currentEvent == "enter" || currentEvent == "turn" && nextData[EVENT_KEY] != "under") {
                 nextEventTime = (time + nextEventTime) / 2;
                 nextDistanceTarget = (this.body.center.z + D / 2 + nextDistanceTarget) / 2;
@@ -275,6 +306,13 @@ class Swimmer {
                 this.body.setTarget(targetPos, nextEventTime - time);
             }
             else this.body.setTarget(null);
+            if (currentEvent == "figure") {
+                console.log("FIGURE");
+                config.splashParticles.spawnSplash(targetPos, null, 10000., null, { speed0: 4., maxParticles: 400 });
+                config.chronoPhotography({ circle: true });
+                // config.splashParticles.spawnSplash(this.body.center, null, 1., null, { fixed: true, color: new GL.Vector(1., 1., 0.), maxParticles: 1, size: 0.5, shrinking: 0 });
+
+            }
 
             if (currentEvent == "cycle") {
                 const currentCycleTime = parseFloat(this.data[this.currendDataIndex][TIME_KEY]);
@@ -330,7 +368,7 @@ class Swimmer {
             if (this.useTracking || raceTime > this.reactionTime && !config.params.swimmers.useTracking) {
                 this.swim(true);
                 this.waterDamping = config.params.simulation.waterDamping;
-                this.jump();
+                if (!this.useTracking) this.jump();
                 if (this.useTracking) {
                     this.body.cinematic = true;
                     this.body.followTarget = true;
@@ -349,7 +387,7 @@ class Swimmer {
 
         if (this.isSwimming) {
             if (!this.useTracking) this.body.addForce(this.force);
-            if (this.body.center.y > -this.body.radius) {
+            if (this.body.center.y > -this.body.radius && !config.isSceneSynchronizedSwimming()) {
                 this.moveSpheres(dt);
             }
             else this.moveSpheresAway();
@@ -364,6 +402,8 @@ class Swimmer {
 
 
         if (this.body.center.z > -config.params.simulation.poolSize.z / 2 + 20) return;
+
+        if (config.isSceneSynchronizedSwimming()) return;
 
         if (Swimmer.raceHasStarted && !this.hasDove && this.body.center.y < 0 && this.body.oldCenter.y >= 0) {
             this.divingDistance = this.body.center.z + config.params.simulation.poolSize.z / 2;

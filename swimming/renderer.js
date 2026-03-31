@@ -681,8 +681,9 @@ function Renderer(gl, water, flagCenter, flagSize) {
   `, helperFunctions + `
     in vec3 position;
     out vec4 fragColor;
+    uniform vec3 color;
   void main() {
-    fragColor = vec4(getSphereColor(position), 1.0);
+    fragColor = vec4(getSphereColor(position)*color, 1.0);
       vec4 info = texture(water, position.xz / poolSize.xz + 0.5);
     if (position.y < info.r) {
       fragColor.rgb *= underwaterColor * 1.2;
@@ -878,7 +879,8 @@ Renderer.prototype.renderWater = function (water, sky, shadowParams) {
  */
 Renderer.prototype.renderSpheres = function (water) {
   const spheres = [];
-  config.swimmers.forEach(swimmer => swimmer.spheres.forEach(sphere => spheres.push(sphere)));
+  if (config.params.swimmers.showSpheres) config.swimmers.forEach(swimmer => swimmer.spheres.forEach(sphere => spheres.push(sphere)));
+  if (config.params.simulation.showFloaters) config.floaters.forEach(floater => spheres.push(floater));
   for (let sphere of spheres) {
     this.renderSphere(water, sphere);
   }
@@ -899,6 +901,7 @@ Renderer.prototype.renderSphere = function (water, sphere) {
     sphereCenter: [sphere.center.x, sphere.center.y, sphere.center.z],
     sphereRadius: sphere.radius * config.spheresRadiusCoeff,
     poolSize: [config.params.simulation.poolSize.x, config.params.simulation.poolSize.y, config.params.simulation.poolSize.z],
+    color: [sphere.color.x, sphere.color.y, sphere.color.z]
   }).draw(sphere.mesh);
 };
 
