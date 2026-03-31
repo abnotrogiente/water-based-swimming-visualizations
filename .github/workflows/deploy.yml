@@ -42,6 +42,15 @@ jobs:
           name: production-files
           path: ./dist
 
+      - name: Call protected deploy endpoint
+        env:
+          BASIC_AUTH_USERNAME: ${{ secrets.VIZVID_USERNAME }}
+          BASIC_AUTH_PASSWORD: ${{ secrets.VIZVID_PASSWORD }}
+        run: |
+          curl -k https://dataroom.liris.cnrs.fr/vizvid/pipeline-tracking/2024_JO_Paris/2024_JO_Paris_freestyle_hommes_100_finaleA/100%20NL%20MESSIEURS%20FINALE.MP4 -o dist/swimming/swimming-race.mp4
+          curl -k https://dataroom.liris.cnrs.fr/vizvid/pipeline-artistique/2022-CFJe-hiver-duo-mixte-finale-aqua-synchro-lyon/CALIB-2022-CFJe-hiver-duo-mixte-finale-aqua-synchro-lyon_comp35.mp4 -o dist/swimming/synchronized-swimming.mp4
+
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:

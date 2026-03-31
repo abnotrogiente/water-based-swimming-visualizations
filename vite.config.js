@@ -19,7 +19,7 @@ copies.push({ src: "swimming/assets/vis-config-demo-2.json", dest: "swimming/ass
 for (let i = 1; i <= 8; i++) copies.push({ src: "swimming/assets/race-data/" + i + ".csv", dest: "swimming/assets/race-data/" });
 
 export default defineConfig({
-    base: "/demo/",
+    base: "/water-based-swimming-visualizations/",
     clearScreen: false,
     optimizeDeps: {
         esbuildOptions: {
