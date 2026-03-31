@@ -1,0 +1,63 @@
+[
+    {
+        "distance": 15,
+        "params": {
+            "showFlags": true
+        }
+    },
+    {
+        "distance": 17.5,
+        "params": {
+            "showSpeed": true
+        }
+    },
+    {
+        "distance": 20,
+        "params": {
+            "swimmersLinesMode": "per swimmer",
+            "showSwimmersLines": "only medals"
+        }
+    },
+    {
+        "distance": 22.5,
+        "params": {
+            "medalsModeBeforeFinish": "bright"
+        }
+    },
+    {
+        "distance": 25,
+        "params": {
+            "showWR": true
+        }
+    },
+    {
+        "distance": 27.5,
+        "params": {
+            "showFlags": false
+        }
+    },
+    {
+        "distance": 30,
+        "params": {
+            "showSpeed": false
+        }
+    },
+    {
+        "distance": 32.5,
+        "params": {
+            "showSwimmersLines": "none"
+        }
+    },
+    {
+        "distance": 35,
+        "params": {
+            "medalsModeBeforeFinish": "none"
+        }
+    },
+    {
+        "distance": 37.5,
+        "params": {
+            "showWR": false
+        }
+    }
+]

@@ -1,0 +1,215 @@
+<!--
+WebGL Water
+http://madebyevan.com/webgl-water/
+
+Copyright 2011 Evan Wallace
+Released under the MIT license
+-->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Swimming</title>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"
+    integrity="sha512-zhHQR0/H5SEBL3Wn6yYSaTTZej12z0hVZKOv3TwCUXT1z5qeqGcXJLLrbERYRScEDDpYIJhPC1fk31gqR783iQ=="
+    crossorigin="anonymous" defer></script>
+  <!-- <script src="./OES_texture_float_linear-polyfill.js"></script> -->
+  <!-- <script type="module" src="./cubemap.js"></script>
+    <script type="module" src="./renderer.js"></script>
+    <script type="module" src="./water.js"></script> -->
+  <style type="text/css">
+    body {
+      font: 13px/140% Arial, sans-serif;
+      background: black;
+      color: white;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    a {
+      color: inherit;
+      cursor: pointer;
+    }
+
+    img {
+      display: none;
+    }
+
+    ul {
+      padding: 0 0 0 20px;
+    }
+
+    h1 {
+      font: bold italic 30px/30px Georgia;
+      text-align: center;
+    }
+
+    h2 {
+      font: bold italic 17px/17px Georgia;
+      padding-top: 10px;
+    }
+
+    small {
+      display: block;
+      font-size: 11px;
+      line-height: 15px;
+    }
+
+    canvas {
+      position: absolute;
+      display: block;
+      top: 0;
+      left: 0;
+    }
+
+    #help {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 280px;
+      padding-right: 20px;
+      overflow: auto;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    #loading {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      right: 300px;
+      text-align: center;
+      margin-top: -8px;
+    }
+
+    .overlay-text {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-size: 10px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #h {
+      font-size: 30px;
+    }
+
+    #warning {
+      top: 10px;
+      left: 10px;
+      color: red;
+      font-size: 10px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #resolution {
+      top: 10px;
+      left: 10px;
+      color: blue;
+      font-size: 10px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #fps {
+      top: 10px;
+      left: 10px;
+      color: purple;
+      font-size: 30px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* styling for the time slider container */
+    #time-slider-container {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 3;
+      pointer-events: auto;
+      width: 80vw;
+      max-width: 800px;
+    }
+
+    #time-slider {
+      width: 100%;
+    }
+
+    @media (max-width: 600px) {
+      small {
+        font-size: 8px;
+        line-height: 10px;
+      }
+
+      #help {
+        width: 100px;
+        font-size: 10px;
+        line-height: 12px;
+      }
+    }
+  </style>
+
+
+<script type="module" crossorigin src="/water-based-swimming-visualizations/assets/swimming-BDp1P_qG.js"></script>
+
+<body>
+  <!-- <canvas id="glcanvas" width="640" height="480"></canvas> -->
+  <div id="loading">Loading...</div>
+  <div id="drop-zone"
+    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 999; border: 5px dashed white; align-items: center; justify-content: center; font-size: 32px; color: white; pointer-events: none;">
+    Drop MP4 file here
+  </div>
+  <div id="h" class="overlay-text">Press H to toggle help menu.</div>
+  <div id="commands" class="overlay-text" hidden="true">Press 'C' to enable or disable area conservation. <br /> <br />
+    Press 'J' to simulate a jump.<br /> <br />
+    Press 'S' to simulate swimming.<br /> <br />
+    Press 'P' to toggle projection grid display.<br /> <br />
+    Press 'A' to toggle area conserved grid display.<br /> <br />
+    Drag a video file to load it.<br /> <br />
+    Press 'V' to plot video.<br /> <br />
+    Use up and down arrow keys to adjust x resolution.<br /> <br />
+    Use left and right arrow keys to adjust z resolution.<br /> <br />
+    Drag on the water to start ripples. <br /> <br />
+    <div id="resolution">Resolution: 256 x 256</div>
+    <div hidden="true" id="warning">Area conservation should be disabled for best performance.</div>
+    <div id="fps"></div>
+  </div>
+
+  <div hidden="true" id="time-slider-container">
+    <input type="range" id="time-slider" min="0" max="51">
+    <!-- <label for="time-slider">time</label> -->
+    <button id="play-button">play</button>
+    <button id="stop-button" hidden="true">stop</button>
+
+  </div>
+
+  <!-- event timeline editor -->
+  <!-- <div id="event-editor"
+    style="position:relative;bottom:60px;left:10px;right:10px;height:120px;z-index:4;background:#222;color:#fff;overflow:auto;padding:4px;font-size:12px;">
+    populated by eventEditor.js -->
+  <!-- </div> -->
+
+
+
+
+  <img hidden="true" id="tiles" src="/water-based-swimming-visualizations/assets/tiles-CyC06c8e.jpg">
+  <img hidden="true" id="china" src="/water-based-swimming-visualizations/assets/china-CWssS1Eo.jpg">
+  <img hidden="true" id="france" src="/water-based-swimming-visualizations/assets/france-B6eZ-BRz.jpg">
+  <img hidden="true" id="letters" src="/water-based-swimming-visualizations/assets/letters-C1L9LzZ2.png">
+  <img hidden="true" id="xneg" src="/water-based-swimming-visualizations/assets/xneg-DFRUa4fb.jpg">
+  <img hidden="true" id="xpos" src="/water-based-swimming-visualizations/assets/xpos-C3S1fUeD.jpg">
+  <img hidden="true" id="ypos" src="/water-based-swimming-visualizations/assets/ypos-CXmTcgPB.jpg">
+  <img hidden="true" id="zneg" src="/water-based-swimming-visualizations/assets/zneg-DlcQZ-Y5.jpg">
+  <img hidden="true" id="zpos" src="/water-based-swimming-visualizations/assets/zpos-ia2D58dH.jpg">
+</body>
+
+</html>

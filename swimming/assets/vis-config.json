@@ -1,0 +1,87 @@
+[
+    {
+        "time": -3,
+        "params": {
+            "showFlags": true,
+            "showWR": false,
+            "medalsModeAfterFinish": "lanes",
+            "showStreaks": true
+        },
+        "transition": {
+            "type": "dissolve",
+            "duration": 3
+        }
+    },
+    {
+        "distance": 20,
+        "params": {
+            "showFlags": false,
+            "showSpeed": true,
+            "showStreaks": false
+        },
+        "transition": {
+            "type": "dissolve",
+            "duration": 3
+        }
+    },
+    {
+        "distance": 25,
+        "params": {
+            "swimmersLinesMode": "per swimmer",
+            "showSwimmersLines": "only medals"
+        }
+    },
+    {
+        "distance": 40,
+        "params": {
+            "showFlags": true,
+            "showSpeed": false
+        },
+        "transition": {
+            "type": "dissolve",
+            "duration": 3
+        }
+    },
+    {
+        "distance": 40,
+        "params": {
+            "showWR": true
+        }
+    },
+    {
+        "distance": 70,
+        "params": {
+            "showFlags": false,
+            "showSpeed": true,
+            "medalsModeBeforeFinish": "bright"
+        },
+        "transition": {
+            "type": "dissolve",
+            "duration": 3
+        }
+    },
+    {
+        "distance": 80,
+        "params": {
+            "swimmersLinesMode": "neighbours"
+        }
+    },
+    {
+        "distance": 90,
+        "params": {
+            "showFlags": true,
+            "showSpeed": false
+        },
+        "transition": {
+            "type": "dissolve",
+            "duration": 3
+        }
+    },
+    {
+        "distance": 100,
+        "rankSwimmerToggle": 1,
+        "params": {
+            "showFinishTimes": true
+        }
+    }
+]

@@ -1,0 +1,37 @@
+[
+    {
+        "distance": 15,
+        "params": {
+            "showFlags": true
+        }
+    },
+    {
+        "distance": 17.5,
+        "params": {
+            "showFlags": false,
+            "showSpeed": true
+        }
+    },
+    {
+        "distance": 20,
+        "params": {
+            "showSpeed": false,
+            "swimmersLinesMode": "per swimmer",
+            "showSwimmersLines": "only medals"
+        }
+    },
+    {
+        "distance": 22.5,
+        "params": {
+            "showSwimmersLines": "none",
+            "medalsModeBeforeFinish": "bright"
+        }
+    },
+    {
+        "distance": 25,
+        "params": {
+            "medalsModeBeforeFinish": "none",
+            "showWR": true
+        }
+    }
+]
