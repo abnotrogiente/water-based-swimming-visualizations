@@ -60,7 +60,7 @@ class Config {
                 showFloaters: false,
                 optimized: false, waterDamping: .02, poolSize: new GL.Vector(4.0, 1.0, 4.0), buoyancyFactor: 1.1,
                 // foam: { enabled: true, velThreshold: .5, velMax: 3., dispersion: 0.015 }
-                foam: { enabled: true, velThreshold: .35, velMax: 3.5, dispersion: 0.015, timeVariation: 2.5, spaceVariation: 8, attenuation: .015 },
+                foam: { enabled: true, velThreshold: .35, velMax: 3.5, dispersion: 0.015, timeVariation: 2.5, spaceVariation: 25, attenuation: .015 },
                 splashes: { enabled: true, strengthThreshold: 2. }
             },
             quiver: { amplitudeFactor: 0.78, frequencyFactor: 1.2, amplitude: .1, omega: 2., waveLength: 1. },
@@ -158,12 +158,6 @@ class Config {
 
         this.showTimeline = true;
 
-        // this.params.simulation.foam.velThreshold = 0.;
-        // this.params.simulation.foam.velMax = 2.2;
-        // this.params.simulation.foam.dispersion = 0.0025;
-        // this.params.simulation.foam.timeVariation = 0.3;
-        // this.params.simulation.foam.spaceVariation = 8;
-        // this.params.simulation.foam.attenuation = 0.;
     }
 
     hideEditorPanel(v) {
@@ -335,6 +329,15 @@ class Config {
 
             this._setPannelMinimized(this.currentScene.title != "100m freestyle");
 
+            if (this.isSceneSynchronizedSwimming()) {
+                this.params.simulation.foam.velThreshold = 0.;
+                this.params.simulation.foam.velMax = 2.2;
+                this.params.simulation.foam.dispersion = 0.0025;
+                this.params.simulation.foam.timeVariation = 2.5;
+                this.params.simulation.foam.spaceVariation = 10;
+                this.params.simulation.foam.attenuation = 0.0002;
+            }
+
         }
 
     }
@@ -406,15 +409,6 @@ class Config {
         this.showTexts(false);
 
         // if (this.isSceneSynchronizedSwimming()) this.params.visualizations.showStreaks = true;
-        if (this.isSceneSynchronizedSwimming()) {
-            this.params.simulation.foam.velThreshold = 0.;
-            this.params.simulation.foam.velMax = 2.2;
-            this.params.simulation.foam.dispersion = 0.0025;
-            this.params.simulation.foam.timeVariation = 0.3;
-            this.params.simulation.foam.spaceVariation = 8;
-            this.params.simulation.foam.attenuation = 0.;
-
-        }
         console.log("show streaks : " + this.params.visualizations.showStreaks);
     }
     stopRace() {

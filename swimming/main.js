@@ -553,7 +553,7 @@ window.onload = function () {
       renderer.lightDir = GL.Vector.fromAngles((90 - config.angleY) * Math.PI / 180, -config.angleX * Math.PI / 180);
       if (config.paused) renderer.updateCaustics(config.water);
     }
-    if (config.isOneVisualizationEnabled()) Swimmer.updateAttributesTexture();
+    Swimmer.updateAttributesTexture();
     config.water.addOrRemoveVisualizationWaves(true);
     config.water.updateNormals();
 
@@ -583,8 +583,8 @@ window.onload = function () {
     gl.disable(gl.DEPTH_TEST);
     const particlesOption = {};
     // if (config.isSceneSynchronizedSwimming()) particlesOption.showStreaks = false;
-    if (config.params.visualizations.showStreaks || config.params.simulation.splashes.enabled) config.splashParticles.draw(particlesOption);
     config.renderVideo();
+    if (config.params.visualizations.showStreaks || config.params.simulation.splashes.enabled) config.splashParticles.draw(particlesOption);
     if (config.params.chronoPhotography.available) drawChronoPhotography();
 
     drawCornerView();
