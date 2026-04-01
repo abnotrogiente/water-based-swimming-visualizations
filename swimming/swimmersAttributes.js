@@ -233,7 +233,7 @@ class SwimmersAttributes {
 
         //Second row of attributes
         this.swimmersAttributes[this.numVecAttributes * 4 * index + 4] = swimmer.reactionTime;
-        this.swimmersAttributes[this.numVecAttributes * 4 * index + 5] = swimmer.body.velocity.z * 3.6;
+        this.swimmersAttributes[this.numVecAttributes * 4 * index + 5] = swimmer.body.velocity.z;
         this.swimmersAttributes[this.numVecAttributes * 4 * index + 6] = swimmer.nationality;
 
         this.swimmersAttributes[this.numVecAttributes * 4 * index + 8] = swimmer.breakoutDistance;

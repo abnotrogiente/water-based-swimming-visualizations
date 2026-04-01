@@ -70,7 +70,7 @@ const fragmentShaderSource = /*glsl*/ `#version 300 es
 
         // fade with life
         if(vFixed < .1) alpha *= vLife;
-        else alpha *= pow(vLife, 10.);
+        else alpha *= pow(vLife, 1.);
 
         if (altitude < 0. && vFixed >.1) alpha /= (1.-altitude)*2.;
 
@@ -138,7 +138,7 @@ class SplashParticles {
         this.initPrograms();
     }
 
-    spawnSplash(pos, phi0, strength, strengthThreshold, { fixed = false, color = new GL.Vector(1., 1., 1.), speed0 = 1, maxParticles = 10, shrinking = null, size = null }) {
+    spawnSplash(pos, phi0, strength, strengthThreshold, { fixed = false, color = new GL.Vector(1., 1., 1.), speed0 = 1, maxParticles = 15, shrinking = null, size = null }) {
         // console.log("spawn splashes : " + strength);
         // const basePos = gridToWorld(i, j);
         let shrk = shrinking !== null ? shrinking : 1

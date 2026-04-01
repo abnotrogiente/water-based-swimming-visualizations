@@ -38,7 +38,7 @@ class Config {
         this.params = {
             numSteps: 2, fov: 45,
             visualizations: {
-                enabled: true, showFlags: false, showWR: false, showSpeed: false, showDivingDistance: false,
+                enabled: true, showFlags: false, showWR: false, showSpeed: false, showDivingDistance: true,
                 showFinishTimes: false, showStreaks: false,
                 customWaterPerturbation: "none",
                 waterColorParameter: "none", customParametersList: customParametersList, customParametersDict: customParametersDict,
@@ -57,6 +57,7 @@ class Config {
             swimmers: { showSpheres: true, useTracking: false },
             video: { thresholdBlending: false, blendingThreshold: .41, show: false, opacity: 1., hideObstructions: false, hideObstructionThreshold: .2 },
             simulation: {
+                heightLimit: .04,
                 showFloaters: false,
                 optimized: false, waterDamping: .02, poolSize: new GL.Vector(4.0, 1.0, 4.0), buoyancyFactor: 1.1,
                 // foam: { enabled: true, velThreshold: .5, velMax: 3., dispersion: 0.015 }
@@ -158,6 +159,10 @@ class Config {
 
         this.showTimeline = true;
 
+        this.MVPMI = null;
+
+        /**@type {Sphere[]} */
+        this.bubbleSpheres = [];
     }
 
     hideEditorPanel(v) {
@@ -278,6 +283,16 @@ class Config {
 
     isSceneSynchronizedSwimming() {
         return this.currentScene.title == "synchronized swimming";
+    }
+
+    setMVPMI() {
+        const MVM = this.gl.modelviewMatrix;
+        const PM = this.gl.projectionMatrix;
+
+        const MVPM = PM.multiply(MVM);
+
+        this.MVPMI = MVPM.inverse();
+        console.log("MVPMI set");
     }
 
 

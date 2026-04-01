@@ -275,8 +275,12 @@ class Video {
 
     uniform float ratio_screen;
     uniform float dx_screen;
+    uniform mat4 calib_MVPMI;
 
     void main(void) {
+        // vec4 posAbsolute = calib_MVPMI * vec4(gl_Vertex.xz*1000., 0., 1.);
+        // vec4 posAbsolute = gl_ModelViewProjectionMatrixInverse * vec4(gl_Vertex.xz, 0., 1.);
+        // gl_Position = gl_ModelViewProjectionMatrix * posAbsolute;
         gl_Position = vec4(gl_Vertex.xz, 0., 1.);
         gl_Position.x *= ratio_screen;
 
@@ -437,12 +441,22 @@ class Video {
         const x = (this.gl.canvas.width - W) / 2;
         // this.gl.viewport(x, 0, W, H);
 
+        const MVM = this.gl.modelviewMatrix;
+        const PM = this.gl.projectionMatrix;
+
+        const MVPM = PM.multiply(MVM);
+
+        const MVPMI = MVPM.inverse();
+        // config.setMVPMI();
+
         if (Swimmer.swimmersAttributesTexture) Swimmer.swimmersAttributesTexture.bind(1);
         // config.gl.activeTexture(config.gl.TEXTURE4);
         // config.gl.bindTexture(config.gl.TEXTURE_2D, config.drawingTexture);
         this.shader.uniforms({
             ratio_screen: W / this.gl.canvas.width,
             dx_screen: x / this.gl.canvas.width,
+            // calib_MVPMI: MVPMI.m,
+            calib_MVPMI: config.MVPMI ? config.MVPMI.m : new Float32Array(16),
             uSampler: 0,
             swimmersHelperFunctions: 1,
             screen: 4,

@@ -69,7 +69,7 @@ var helperFunctions = `
     float diffuse = max(0.0, dot(-refractedLight, sphereNormal)) * 0.5;
     vec2 coord = point.xz / poolSize.xz + 0.5;
     vec4 info = texture(water, coord);
-    if (point.y < info.r) {
+    if (point.y < info.r && renderWater) {
       vec4 caustic = texture(causticTex, 0.75 * (point.xz - point.y * refractedLight.xz / refractedLight.y) / poolSize.xz + 0.5);
       diffuse *= caustic.r * 4.0;
     }
@@ -204,6 +204,8 @@ function Renderer(gl, water, flagCenter, flagSize) {
       uniform float medalsModeBeforeFinish;
       uniform float medalsModeAfterFinish;
 
+      uniform float heightLimit;
+
       uniform float seed;
 
       uniform float waterColorParameter;
@@ -239,7 +241,7 @@ function Renderer(gl, water, flagCenter, flagSize) {
       
       
       ` + swimmersHelperFunctions + textHelperFunctions + `
-      makeStrF(printSpeed) _num_ __ _k _m _DIV _h _endNum
+      makeStrF(printSpeed) _num_ __ _m _DIV _s _endNum
       makeStrF(printTime) _num_ __ _s _endNum
 
 
@@ -333,7 +335,7 @@ function Renderer(gl, water, flagCenter, flagSize) {
         float distFactor = 0.;
         float startDissipationTime = 0.5;
         float stopDissipationTime = 1.5;
-        float reshowTime = 4.;
+        float reshowTime = 5.;
         float reshowAppearDuration = 2.;
         float opacity = showFlags;
         if (time >= stopDissipationTime && time <= reshowTime) opacity = 0.;
@@ -661,6 +663,8 @@ function Renderer(gl, water, flagCenter, flagSize) {
           
           fragColor = vec4(mix(refractedColor, reflectedColor, fresnel), 1.0);
 
+          // if (info.r > heightLimit) fragColor = vec4(1., 0., 0., 1.);
+
           if(!foamEnabled) return;
 
           vec3 waterColor = abovewaterColor;
@@ -685,7 +689,7 @@ function Renderer(gl, water, flagCenter, flagSize) {
   void main() {
     fragColor = vec4(getSphereColor(position)*color, 1.0);
       vec4 info = texture(water, position.xz / poolSize.xz + 0.5);
-    if (position.y < info.r) {
+    if (position.y < info.r && renderWater) {
       fragColor.rgb *= underwaterColor * 1.2;
     }
   }
@@ -867,6 +871,7 @@ Renderer.prototype.renderWater = function (water, sky, shadowParams) {
       medalsModeBeforeFinish: Math.round(config.params.visualizations.medalsModesDict[config.params.visualizations.medalsModeBeforeFinish]),
       medalsModeAfterFinish: Math.round(config.params.visualizations.medalsModesDict[config.params.visualizations.medalsModeAfterFinish]),
       rendering: config.params.visualizations.renderingDict[config.params.visualizations.rendering].value,
+      heightLimit: config.params.simulation.heightLimit,
       waterColorParameter: config.params.visualizations.customParametersDict[config.params.visualizations.waterColorParameter].value
     }).draw(water.plane);
   }
@@ -881,6 +886,7 @@ Renderer.prototype.renderSpheres = function (water) {
   const spheres = [];
   if (config.params.swimmers.showSpheres) config.swimmers.forEach(swimmer => swimmer.spheres.forEach(sphere => spheres.push(sphere)));
   if (config.params.simulation.showFloaters) config.floaters.forEach(floater => spheres.push(floater));
+  config.bubbleSpheres.forEach(bubble => spheres.push(bubble));
   for (let sphere of spheres) {
     this.renderSphere(water, sphere);
   }

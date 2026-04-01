@@ -417,6 +417,14 @@ class Swimmer {
             this.breakoutTime = raceTime;
             this.hasBrokeOut = true;
         }
+
+        // if (this.body.center.y <= -.5 && Math.random() < .25) {
+        //     const pos = this.body.center.clone();
+        //     // pos.x += (Math.random() - .5) * .5;
+        //     // pos.z += (Math.random() - .5) * .5;
+        //     const radius = -this.body.center.y / 10.;
+        //     config.bubbleSpheres.push(new Sphere(pos, radius, new GL.Vector(1, 1, 1), 2.));
+        // }
     }
 }
 
