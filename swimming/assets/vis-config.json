@@ -15,25 +15,17 @@
         "distance": 20,
         "params": {
             "showFlags": false,
-            "showSpeed": true
+            "showWR": true
         },
         "transition": {
             "type": "dissolve",
             "duration": 3
-        }
-    },
-    {
-        "distance": 25,
-        "params": {
-            "swimmersLinesMode": "per swimmer",
-            "showSwimmersLines": "only medals"
         }
     },
     {
         "distance": 40,
         "params": {
-            "showFlags": true,
-            "showSpeed": false
+            "showFlags": true
         },
         "transition": {
             "type": "dissolve",
@@ -41,10 +33,10 @@
         }
     },
     {
-        "distance": 50,
+        "distance": 55,
         "params": {
             "showFlags": false,
-            "showStreaks": true
+            "showSpeed": true
         },
         "transition": {
             "type": "dissolve",

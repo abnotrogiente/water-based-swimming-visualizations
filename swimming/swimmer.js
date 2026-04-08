@@ -164,6 +164,7 @@ class Swimmer {
             else this.moveToBeginning();
         }
         else {
+            this.moveSpheresAway();
             this.body.velocity = new GL.Vector(0, 0, 0);
             this.body.center = new GL.Vector(this.startingPoint.x, 0, 0);
         }
@@ -347,6 +348,7 @@ class Swimmer {
     }
 
     moveSpheres(dt) {
+        if (this.body.center.z <= -config.params.simulation.poolSize.z / 2 + .1) return;
         this.cycleTime += dt;
         const offset1 = this.getArmOffset(.5 * this.cycleTime, 0);
         const offset2 = this.getArmOffset(.5 * this.cycleTime, Math.PI);

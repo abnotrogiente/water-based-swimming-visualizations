@@ -316,6 +316,7 @@ Water.prototype.addDrop = function (x, y, radius, strength) {
  * @returns 
  */
 Water.prototype.addOrRemoveVisualizationWaves = function (add) {
+  if (config.classicalOverlayEnabled) return;
   const speed = 2.155;
   this.prev_WR_position = this.WR_position;
   this.WR_position = config.getRaceTime() * speed;

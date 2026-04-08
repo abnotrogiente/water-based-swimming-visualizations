@@ -89,7 +89,7 @@ const swimmersHelperFunctions = `
         return 0.;
     }
 
-    void ripples(in vec2 coord, in vec2 eventPosition, in float eventTime, float intensity, out vec3 res) {
+    void ripples(in vec2 coord, in vec2 eventPosition, in float eventTime, float intensity, out vec4 res) {
         float timeSinceDiving = time - eventTime;
         const float rippleSpeed = .5;
         const float maxTime = 10.;
@@ -102,7 +102,7 @@ const swimmersHelperFunctions = `
         float d = sqrt(dot(diff, diff));
         d*=2.;
         
-        float r_max_max = 0.5;
+        float r_max_max = 0.65;
         
         float r_max = max(0.3, intensity * r_max_max);
         float attenuationDist = r_max;
@@ -116,32 +116,33 @@ const swimmersHelperFunctions = `
         if (c > 0.8 && condition) {
             res.y = max(res.y, min(1., 15.*attenuation));
             res.z = 1.;
+            res.w = intensity;
         }
     }
 
-    void divingRipples(in vec2 coord, in vec2 swimmerPosition, in vec2 divingInfo, out vec3 res) {
+    void divingRipples(in vec2 coord, in vec2 swimmerPosition, in vec2 divingInfo, out vec4 res) {
         float swimmer_x = swimmerPosition.x;
         float divingDistance = divingInfo.x;
         float divingTime = divingInfo.y;
 
         vec2 divingLocation = vec2(swimmer_x, divingDistance - poolSize.z / 2.);
 
-        float divingDistRange = 2.;
-        float divingDistMin = 2.;
+        float divingDistRange = .7;
+        float divingDistMin = 3.3;
         float intensity = (divingDistance - divingDistMin) / divingDistRange;
         
         ripples(coord, divingLocation, divingTime, intensity, res);
     }
 
-    void breakoutRipples(in vec2 coord, in vec2 swimmerPosition, in vec2 breakoutInfo, out vec3 res) {
+    void breakoutRipples(in vec2 coord, in vec2 swimmerPosition, in vec2 breakoutInfo, out vec4 res) {
         float swimmer_x = swimmerPosition.x;
         float breakoutDistance = breakoutInfo.x;
         float breakoutTime = breakoutInfo.y;
 
         vec2 breakoutLocation = vec2(swimmer_x, breakoutDistance - poolSize.z / 2.);
 
-        float breakoutDistRange = 8.;
-        float breakoutDistMin = 5.;
+        float breakoutDistRange = 1.3;
+        float breakoutDistMin = 10.7;
         float intensity = (breakoutDistance - breakoutDistMin) / breakoutDistRange;
         
         ripples(coord, breakoutLocation, breakoutTime, intensity, res);
@@ -149,8 +150,8 @@ const swimmersHelperFunctions = `
 
 
 
-    vec3 getDivingWaves(vec2 coord) {
-        vec3 res = vec3(0., 0., -1.);
+    vec4 getDivingWaves(vec2 coord) {
+        vec4 res = vec4(0., 0., -1., 0.);
         
         for (int i = 0; i < 10; i++) {
             float i_float = float(i);

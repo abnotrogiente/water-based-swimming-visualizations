@@ -145,6 +145,18 @@ Released under the MIT license
       width: 100%;
     }
 
+    #demo-text {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 50px;
+      z-index: 2;
+      pointer-events: none;
+      text-align: center;
+    }
+
     @media (max-width: 600px) {
       small {
         font-size: 8px;
@@ -163,6 +175,7 @@ Released under the MIT license
 <body>
   <!-- <canvas id="glcanvas" width="640" height="480"></canvas> -->
   <div id="loading">Loading...</div>
+  <div id="demo-text"></div>
   <div id="drop-zone"
     style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 999; border: 5px dashed white; align-items: center; justify-content: center; font-size: 32px; color: white; pointer-events: none;">
     Drop MP4 file here

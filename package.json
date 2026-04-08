@@ -24,6 +24,7 @@
     "esbuild": "^0.25.0"
   },
   "dependencies": {
-    "three": "^0.173.0"
+    "three": "^0.173.0",
+    "webm-muxer": "^5.1.4"
   }
 }

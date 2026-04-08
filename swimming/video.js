@@ -300,6 +300,7 @@ class Video {
 
     uniform sampler2D uSampler;
     uniform sampler2D screen;
+    uniform bool screenAvailabe;
     uniform bool sparksEnabled;
     uniform vec3 poolSize;
     uniform bool thresholdBlending;
@@ -345,6 +346,20 @@ class Video {
 
     void main(void) {
         highp vec4 texelColor = texture(uSampler, vTextureCoord);
+
+        if (screenAvailabe) {
+            vec4 screenColor = texture(screen, posScreen/2. + .5);
+            float alpha = screenColor.a;
+            if (alpha < .9) {
+                fragColor = vec4(0., 0., 0., 0.);
+                return;
+                // fragColor.a = 0.;
+            }
+            else {
+                fragColor = texelColor;
+                return;
+            }
+        }
         // if (max(max(texelColor.r, texelColor.g), texelColor.b) < .2){
         //     fragColor = vec4(0., 0., 0., 0.);
         //     return;
@@ -366,6 +381,8 @@ class Video {
             if (max(max(texelColor.r, texelColor.g), texelColor.b) < hideObstructionThreshold) fragColor = vec4(0., 0., 0., 0.);
             // return;
         }
+
+        
 
         // vec4 backgroundCol = texture(screen, (posScreen+1.)/2.);
         // if (backgroundCol.r > .6) {
@@ -416,7 +433,34 @@ class Video {
 
     }
 
+    // #swapTextures(t1, t2) {
+    //     let temp;
+    //     temp = t1.id; t1.id = t2.id; t2.id = temp;
+    //     temp = t1.width; t1.width = t2.width; t2.width = temp;
+    //     temp = t1.height; t1.height = t2.height; t2.height = temp;
+    // }
+
+    #swapFBOS() {
+        // swap textures
+        const prevTextureB = config.drawingTextureB;
+        config.drawingTextureB = config.drawingTexture;
+        config.drawingTexture = prevTextureB;
+
+        //bind textures to according FBOs
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, config.drawingFameBufferB);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, config.drawingTextureB);
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0,
+            this.gl.TEXTURE_2D, config.drawingTextureB, 0);
+
+
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, config.drawingFrameBuffer);
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.drawingTexture);
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0,
+            this.gl.TEXTURE_2D, config.drawingTexture, 0);
+    }
+
     render() {
+        let screenAvailabe = false;
         const sparksParams = config.params.visualizations.sparks;
         const poolSize = config.params.simulation.poolSize;
         if (!config.params.video.show) return;
@@ -450,8 +494,16 @@ class Video {
         // config.setMVPMI();
 
         if (Swimmer.swimmersAttributesTexture) Swimmer.swimmersAttributesTexture.bind(1);
-        // config.gl.activeTexture(config.gl.TEXTURE4);
-        // config.gl.bindTexture(config.gl.TEXTURE_2D, config.drawingTexture);
+        screenAvailabe = config.classicalOverlayEnabled && (config.drawingFameBuffer !== null)
+        // console.log("render video : " + screenAvailabe);
+        if (screenAvailabe) {
+            // screenAvailabe = true;
+            // console.log("SCREEN AVAILABLE");
+            this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, config.drawingFameBufferB);
+            config.gl.activeTexture(config.gl.TEXTURE15);
+            config.gl.bindTexture(config.gl.TEXTURE_2D, config.drawingTexture);
+        }
+
         this.shader.uniforms({
             ratio_screen: W / this.gl.canvas.width,
             dx_screen: x / this.gl.canvas.width,
@@ -459,7 +511,8 @@ class Video {
             calib_MVPMI: config.MVPMI ? config.MVPMI.m : new Float32Array(16),
             uSampler: 0,
             swimmersHelperFunctions: 1,
-            screen: 4,
+            screen: 15,
+            screenAvailabe: screenAvailabe,
             iTime: config.getRaceTime(),
             poolSize: [poolSize.x, poolSize.y, poolSize.z],
             iResolution: [this.gl.canvas.width, this.gl.canvas.height],
@@ -480,10 +533,35 @@ class Video {
         }).draw(this.mesh);
         this.gl.disable(this.gl.BLEND);
         this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
+
+        if (screenAvailabe) {
+            this.#swapFBOS();
+        }
     }
 
-    setTime(t) {
-        if (this.copyVideo) this.video.currentTime = t;
+    async setTime(t) {
+        if (!this.copyVideo) return;
+        if (Math.abs(this.video.currentTime - t) < 1e-6) return;
+
+        const video = this.video;
+        let resolveFrame;
+        const frameReady = new Promise(resolve => {
+            resolveFrame = resolve;
+        });
+
+        video.currentTime = t;
+
+        if (video.requestVideoFrameCallback) {
+            video.requestVideoFrameCallback(() => resolveFrame());
+        } else {
+            const onSeeked = () => {
+                video.removeEventListener('seeked', onSeeked);
+                resolveFrame();
+            };
+            video.addEventListener('seeked', onSeeked, { once: true });
+        }
+
+        await frameReady;
     }
 
 
@@ -530,6 +608,7 @@ class Video {
         const srcFormat = this.gl.RGBA;
         const srcType = this.gl.UNSIGNED_BYTE;
         this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture);
+        // this.video.currentTime = config.time;
         this.gl.texImage2D(
             this.gl.TEXTURE_2D,
             level,

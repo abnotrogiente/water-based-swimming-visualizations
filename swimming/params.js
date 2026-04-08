@@ -55,13 +55,12 @@ class Config {
                 sparks: { enabled: false, glow: 5., glowOffset: .5, lengthFactor: 1., stroke: .01, num: 40, sizeFactor: 50, fov: Math.PI / 4 }
             },
             swimmers: { showSpheres: true, useTracking: false },
-            video: { thresholdBlending: false, blendingThreshold: .41, show: false, opacity: 1., hideObstructions: false, hideObstructionThreshold: .2 },
+            video: { thresholdBlending: false, blendingThreshold: .41, show: false, opacity: 1., hideObstructions: false, hideObstructionThreshold: .35 },
             simulation: {
                 heightLimit: .04,
-                showFloaters: false,
                 optimized: false, waterDamping: .02, poolSize: new GL.Vector(4.0, 1.0, 4.0), buoyancyFactor: 1.1,
                 // foam: { enabled: true, velThreshold: .5, velMax: 3., dispersion: 0.015 }
-                foam: { enabled: true, velThreshold: .35, velMax: 3.5, dispersion: 0.015, timeVariation: 2.5, spaceVariation: 25, attenuation: .015 },
+                foam: { enabled: true, velThreshold: .35, velMax: 3., dispersion: 0.015, timeVariation: 2.5, spaceVariation: 25, attenuation: .015 },
                 splashes: { enabled: true, strengthThreshold: 2. }
             },
             quiver: { amplitudeFactor: 0.78, frequencyFactor: 1.2, amplitude: .1, omega: 2., waveLength: 1. },
@@ -145,8 +144,10 @@ class Config {
         this.renderCube = true;
         this.spheresRadiusCoeff = 1.;
         this.distanceFixed = 0.;
-        this.chronoFrameBuffer = this.gl.createFramebuffer()
+        this.chronoFrameBuffer = this.gl.createFramebuffer();
         this.drawingFrameBuffer = null;
+        this.drawingFameBufferB = this.gl.createFramebuffer();
+        this.drawingTextureB = this.gl.createTexture();
         // this.drawingFrameBuffer = null;
         this.drawingTexture = this.gl.createTexture();
         this.resetDrawingTexture();
@@ -163,6 +164,8 @@ class Config {
 
         /**@type {Sphere[]} */
         this.bubbleSpheres = [];
+
+        this.classicalOverlayEnabled = false;
     }
 
     hideEditorPanel(v) {
@@ -198,6 +201,21 @@ class Config {
             this.gl.RENDERBUFFER,
             depthBuffer
         );
+
+
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.drawingFameBufferB);
+
+        this.gl.bindTexture(this.gl.TEXTURE_2D, this.drawingTextureB);
+
+        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0,
+            this.gl.RGBA, this.gl.UNSIGNED_BYTE, null);
+
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0,
+            this.gl.TEXTURE_2D, this.drawingTextureB, 0);
+
+
         this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
     }
 
@@ -223,6 +241,20 @@ class Config {
 
             }
         })
+    }
+
+    #updateGLMatrices() {
+        this.gl.matrixMode(this.gl.PROJECTION);
+        this.gl.loadIdentity();
+        this.gl.perspective(this.params.fov, this.gl.canvas.width / this.gl.canvas.height, 0.01, 100);
+        this.gl.matrixMode(this.gl.MODELVIEW);
+
+        this.gl.loadIdentity();
+        this.gl.translate(this.translateX, this.translateY, -this.zoomDistance);
+        this.gl.rotate(-this.angleZ, 0, 0, 1);
+        this.gl.rotate(-this.angleX, 1, 0, 0);
+        this.gl.rotate(-this.angleY, 0, 1, 0);
+        this.gl.translate(0, 0.5, 0);
     }
 
     /**
@@ -262,16 +294,16 @@ class Config {
         const z0 = -poolSize.z / 2;
         const x0 = -poolSize.x / 2;
 
-        const green = new GL.Vector(0., 1., 0.);
-        const yellow = new GL.Vector(1., 1., 0.);
-        const blue = new GL.Vector(0., 0.5, 1.);
-        const red = new GL.Vector(1., 0., 0.);
+        const green = new GL.Vector(0., 1. / 2, 0.);
+        const yellow = new GL.Vector(1. / 2, 1. / 2, 0.);
+        const blue = new GL.Vector(0., 0.5 / 2, 1. / 2);
+        const red = new GL.Vector(1. / 2, 0., 0.);
         const colors = [green, blue, blue, yellow, yellow, yellow, blue, blue, green];
         for (let i = 1; i < 10; i++) {
             for (let j = 0; j < floatersPerLine; j++) {
                 const center = new GL.Vector(x0 + i * laneSize, 0., z0 + floaterRadius + j * 2 * floaterRadius);
                 let color = colors[i - 1];
-                if (Math.abs(center.z) >= 20. || Math.abs(center.z) <= .5 || Math.abs(Math.abs(center.z) - 10.) <= .25) color = new GL.Vector(1, 0, 0);
+                if (Math.abs(center.z) >= 20. || Math.abs(center.z) <= .5 || Math.abs(Math.abs(center.z) - 10.) <= .25) color = red;
                 this.floaters.push(new Sphere(center, floaterRadius, color, 2.5));
             }
         }
@@ -391,7 +423,8 @@ class Config {
         if (this.currentEventIndex > 0) this.currentEventIndex--;
     }
     setRaceTime(t) {
-        this.time = this.currentVideo.videoStartTime + t;
+        const startTime = this.currentVideo.videoStartTime ? this.currentVideo.videoStartTime : 0;
+        this.time = startTime + t;
         if (this.currentVideo.video) this.currentVideo.setTime(this.time);
         if (!this.events) return;
         this.updateEventIndex();
@@ -410,7 +443,6 @@ class Config {
         }
     }
     startRace() {
-        console.log("START RACE");
         if (this.currentVideo.videoStartTime >= 3.) this.setRaceTime(-3);
         else this.setRaceTime(0);
         if (this.currentVideo.video) this.currentVideo.video.play();
@@ -424,7 +456,6 @@ class Config {
         this.showTexts(false);
 
         // if (this.isSceneSynchronizedSwimming()) this.params.visualizations.showStreaks = true;
-        console.log("show streaks : " + this.params.visualizations.showStreaks);
     }
     stopRace() {
         if (this.paused) this.play();
@@ -529,32 +560,194 @@ class Config {
     recalibrate() {
         if (this.currentVideo) this.setCalibration(this.currentVideo.calibration);
     }
-    async launchDemo() {
-        console.log("Launch demo");
-        await this.setScene("100m freestyle");
+    async updateVideoForOfflineRendering() {
+        if (this.currentVideo && this.currentVideo.video) {
+            if (this.time < 0 || this.time > this.currentVideo.video.duration) return;
+            await this.currentVideo.setTime(this.time);
+        }
+    }
+
+    #prepareDemoPart2() {
+        this.classicalOverlayEnabled = false;
+        this.params.chronoPhotography.available = false;
+        this.drawingFrameBuffer = null;
+        this.parseConfigFile("./assets/vis-config.json");
+        this.stopRace();
+        // this.swimmers.forEach(swimmer => swimmer.body.move(AWAY));
+        this.params.simulation.splashes.enabled = true;
+        this.params.visualizations.shadow.enabled = true;
+
+        this.startRace();
+        this.params.video.hideObstructions = true;
+        this.params.cornerView.show = false;
+        this.water.resetTextures();
+        this.demoTime = 0;
+        this.demoSecondPartStarted = true;
+    }
+    #prepareDemoPart3() {
+        this.stopRace();
+        this.params.video.hideObstructions = false;
+        this.demoTime = 0;
+        this.params.visualizations.shadow.enabled = false;
+        this.setScene("—").then(() => {
+            this.useGravity(true);
+            this.swimmers[0].body.center.y = .5;
+            this.translateX = 200.;
+            this.params.simulation.splashes.enabled = false;
+            this.pause();
+        });
+
+        this.demoPart3Started = true;
+
+        // this.demoSecondPartStarted = true;
+    }
+    #prepareDemoPart4() {
+        this.params.cornerView.show = false;
+        this.params.simulation.splashes.enabled = true;
+        this.hideFloaters = true;
+        this.stopRace();
+        this.parseConfigFile("./assets/vis-config-demo-2.json");
+        this.setScene("100m freestyle").then(() => {
+            this.translateX = 200
+            this.swimmers.forEach(swimmer => swimmer.body.move(AWAY));
+        });
+        this.classicalOverlayEnabled = false;
+        // await this.setScene("100m freestyle");
         this.params.video.show = false;
         this.params.swimmers.showSpheres = true;
         this.spheresRadiusCoeff = 1.;
-        this.demoTime = 0;
-        this.swimmers.forEach(swimmer => swimmer.body.move(AWAY));
+
+
         this.swimmersShown = 0;
-        this.playingDemo = true;
+
         // this.params.swimmers.useTracking = false;
         this.useGravity(true);
         this.params.simulation.buoyancyFactor = 1.5;
         this.params.visualizations.shadow.enabled = false;
         this.renderWater = false;
-        this.translateX = 200;
         // this.parseConfigFile("./assets/vis-config-demo-2.json");
-        this._gui.hide();
-        document.getElementById("event-editor").hidden = true;
-        document.getElementById("time-slider-container").hidden = true;
-        document.getElementById("h").hidden = true;
+
         // this.angleY = this.currentVideo.calibration.ay + 360;
         // this.playButton.hidden = true;
         // this.stopButton.hidden = true;
         // this.renderCube = false;
         // this.setCalibration(new Calibration({}));
+
+
+
+        this.hideFloaters = true;
+
+        this.demoTime = 0;
+        this.demoPart4Started = true;
+
+    }
+
+    #prepareDemoPart5() {
+        this.stopRace();
+        this.parseConfigFile("./assets/vis-config-classical-overlay.json");
+        this.setScene("synchronized swimming").then(() => {
+            this.startRace();
+            this.params.video.hideObstructions = false;
+        });
+        this.demoPart5Started = true;
+        this.demoTime = 0;
+    }
+    async launchDemo() {
+
+
+        this.playingDemo = true;
+
+        this.parseConfigFile("./assets/vis-config-classical-overlay.json");
+        this.params.chronoPhotography.available = true;
+        this.drawingFrameBuffer = this.chronoFrameBuffer;
+        console.log("Launch demo");
+        await this.setScene("100m freestyle").then(() => {
+            this.params.video.show = false;
+            this.translateX = 200;
+
+        });
+        this._gui.hide();
+        document.getElementById("event-editor").hidden = true;
+        document.getElementById("time-slider-container").hidden = true;
+        document.getElementById("h").hidden = true;
+        this.demoTime = 0;
+
+        this.classicalOverlayEnabled = true;
+        this.startRace();
+        this.params.visualizations.showDivingDistance = false;
+        this.params.visualizations.shadow.enabled = false;
+        this.params.simulation.splashes.enabled = false;
+        // this.params.chronoPhotography.available = true;
+
+        this.demoEvents = [
+            { time: 0, text: "Situated Water-Based Visual Effects for Sports Video Augmentation \n Submission to IEEE Vis 2026 #1528", duration: 4, pause: true },
+            {
+                time: 0, text: "Reproduction of the current TV approach", duration: 2, action: () => {
+                    this.params.video.show = true;
+                    this.translateX = this.currentVideo.calibration.tx;
+                }
+            },
+            { time: 8, text: "Currently they use an overlay projection plan.", duration: 2, action: () => this.showOverlayPlane = true, pause: false },
+            { time: 10, text: "Then the flags are drawn on the overlay.", duration: 2, action: () => this.params.visualizations.showFlags = true, pause: false },
+            { time: 12, text: "The overlay is transparent where nothing is drawn.", duration: 3, action: () => this.showOverlayPlane = false, pause: false },
+            { time: 16, text: "Our method", duration: 3, action: () => this.#prepareDemoPart2(), pause: false },
+            { time: 4, text: "We use water-based visual effects to amplify swimming race data", duration: 5, pause: false },
+            { time: 15, text: "Method breakdown", duration: 3, action: () => this.#prepareDemoPart3(), pause: true },
+            { time: 0.5, text: "Evan Wallace's WebGL water", duration: 3.5, pause: false },
+            { time: 4, text: "nothing", duration: 0, action: () => this.#prepareDemoPart4(), pause: false },
+            { time: 0, text: "We adapted to swimming", duration: 2, action: () => this.showOverlayPlane = false, pause: true },
+            { time: .5, text: "Pool", duration: 1, pause: false },
+            { time: 1.5, text: "Water", duration: 1, pause: false },
+            { time: 2.5, text: "Floaters", duration: 1, action: () => this.hideFloaters = false, pause: false },
+            { time: 3.5, text: "Spheres", duration: 2, pause: false },
+            { time: 6., text: "Let\' start a swimming race", duration: 1 },
+            {
+                time: 7.5, text: "Flag appear with water-based transition", duration: 2.5, pause: true, calib: new Calibration({
+                    tx: 16.9,
+                    ty: 6.9,
+                    zoom: 20.5,
+                    ax: -37,
+                    ay: -126.5,
+                    az: -5,
+                    fov: 39.98
+                })
+            },
+            {
+                time: 11.5, text: "Diving points and swimmers' shadows", duration: 2.5, pause: true, calib: new Calibration({
+                    tx: 9,
+                    ty: -10,
+                    zoom: 3,
+                    ax: -30,
+                    ay: -15,
+                    az: 0,
+                    fov: 39.98
+                })
+            },
+            {
+                time: 14.8, text: "Breakout points", duration: 2, pause: true, calib: new Calibration({
+                    tx: -3,
+                    ty: -7,
+                    zoom: 12,
+                    ax: -30,
+                    ay: 10,
+                    az: 0,
+                    fov: 39.98
+                })
+            },
+            { time: 15.7, text: "Speeds", duration: 1.5, pause: false },
+            { time: 17.2, text: "First swimmers lines", duration: 1.5, pause: false },
+            { time: 18.7, text: "Potential medals", duration: 1.5, pause: false },
+            { time: 20.2, text: "World record line", duration: 1.5, pause: false },
+            // { time: 16, text: "World record line", duration: 2, pause: false },
+            { time: 22.5, text: "Embedding in the original swimming race video", duration: 2, pause: false },
+            { time: 24.5, text: "Hiding spheres", duration: 2.5, pause: false },
+            { time: 27, text: "Hiding obstructions", duration: 2, pause: false },
+            { time: 28.5, text: "Corner view from above", duration: 2, action: () => this.params.cornerView.show = true, pause: false },
+            { time: 33.5, text: "Transferring to synchronized swimming", duration: 20, action: () => this.#prepareDemoPart5(), pause: false },
+            { time: 27.5, text: "Artificially enhanced foam to draw the trajectory", duration: 2, pause: false },
+            { time: 30.1, text: "Splashes to emphasize an event", duration: 2, pause: true },
+        ];
+        this.currentDemoEvent = this.demoEvents.shift();
     }
     stopDemo() {
         this.playingDemo = false;
@@ -582,7 +775,7 @@ class Config {
             const x0 = -width / 2 + width / 20;
             const x = x0 + nextSwimmerIdx * width / 10;
             const swimmer = this.swimmers[nextSwimmerIdx];
-            swimmer.body.move(new GL.Vector(x, .5, 0));
+            swimmer.body.move(new GL.Vector(swimmer.body.initCenter.x, .5, 0));
             this.swimmersShown++;
         }
     }
@@ -612,20 +805,77 @@ class Config {
     }
     updateDemo(dt) {
         if (!this.playingDemo) return;
-        const t = this.demoTime;
+        if (this.demoEventDisplayed) {
+            this.demoEventDuration += dt;
+            if (this.currentDemoEvent.calib) {
+                const duration = this.currentDemoEvent.duration;
+                let intensity;
+                if (this.demoEventDuration < duration / 6 || this.demoEventDuration > 5 * duration / 6) intensity = 0.;
+                else if (this.demoEventDuration <= duration / 2) intensity = (this.demoEventDuration - duration / 6) / (duration / 3);
+                else intensity = 1 - (this.demoEventDuration - duration / 2) / (duration / 3);
+                if (!this.demoShowVideoTime) this.demoSavedCalib.ay += 15 * dt;
+                this.setCalibration(this.demoSavedCalib.interpolate(this.currentDemoEvent.calib, intensity, .33));
+            }
+            if (this.demoEventDuration > this.currentDemoEvent.duration) {
+                this.demoEventDisplayed = false;
+                this.play();
+                if (this.demoSavedCalib) this.setCalibration(this.demoSavedCalib);
+                this.demoSavedCalib = null;
+                this.currentDemoEvent = this.demoEvents.shift();
+                document.getElementById("demo-text").innerText = '';
+            }
+            else if (this.currentDemoEvent.pause) return;
+        }
         this.demoTime += dt;
-        const beginShowSwimmersTime = 2.;
+        // console.log("demo time : " + this.demoTime);
+        // console.log("demo event time : " + this.currentDemoEvent);
+        if (!this.demoEventDisplayed && this.currentDemoEvent && this.demoTime > this.currentDemoEvent.time) {
+            // console.log("START DEMO EVENT");
+            this.demoEventDisplayed = true;
+            this.demoEventDuration = 0.;
+            if (this.currentDemoEvent.pause) this.pause();
+            document.getElementById("demo-text").innerText = this.currentDemoEvent.text;
+            if (this.currentDemoEvent.action) this.currentDemoEvent.action();
+            if (this.currentDemoEvent.calib) {
+                this.demoSavedCalib = new Calibration({
+                    tx: this.translateX,
+                    ty: this.translateY,
+                    zoom: this.zoomDistance,
+                    ax: this.angleX,
+                    ay: this.angleY,
+                    az: this.angleZ,
+                    fov: this.params.fov
+                });
+                // this.setCalibration(this.currentDemoEvent.calib);
+            }
+        }
+        // if (this.demoTime >= 0 && !this.demoSecondPartStarted) {
+        //     this.#prepareDemoSecondPart();
+
+        // }
+        const t = this.demoTime;
+        // console.log("demo time : " + t);
+        if (!this.demoPart3Started || this.demoPart5Started) return;
+        const showWaterTime = 1.5;
+        const beginShowSwimmersTime = 3.5;
+        const startMoveTime = 4.5;
+        const startRaceTime = 6.5;
         const poolSlidingTime = 1.;
         if (t <= poolSlidingTime) {
             const t_norm = this.#getInterpFactor(0., poolSlidingTime, t);
             this.translateX = t_norm * this.currentVideo.calibration.tx + (1. - t_norm) * 200;
             // if (t >= poolSlidingTime) this.demoCalibrated = true;
         }
-        else if (!this.demoShowVideoTime) this.angleY += 20 * dt;
-        if (!this.renderCube && t > .5) this.renderCube = true;
-        const showWaterTime = 1.5;
-        if (!this.renderWater && t > 1.5) {
+
+
+        if (!this.demoPart4Started) return;
+
+
+        else if (!this.demoShowVideoTime) this.angleY += 15 * dt;
+        // if (!this.renderCube && t > .5) this.renderCube = true;
+        if (!this.renderWater && t > showWaterTime) {
             this.renderWater = true;
+            // this.hideFloaters = false;
 
         }
         if (t > showWaterTime && t < showWaterTime + .5) {
@@ -634,8 +884,6 @@ class Config {
             }
         }
         this.#demoAddSwimmers(t, beginShowSwimmersTime);
-        const startMoveTime = 3;
-        const startRaceTime = 5;
         if (!Swimmer.raceHasStarted && t >= startMoveTime && t < startRaceTime) {
             this.params.simulation.splashes.enabled = false;
             this.swimmers.forEach(swimmer => {
@@ -654,7 +902,7 @@ class Config {
 
         if (!this.demoShowVideoTime && this.angleY >= this.currentVideo.calibration.ay + 360) {
             //this.params.video.show = true;
-            this.demoShowVideoTime = this.demoTime + 1.;
+            this.demoShowVideoTime = 22.5;
         }
         if (!this.params.video.show && this.demoShowVideoTime && t >= this.demoShowVideoTime) {
             this.params.video.show = true;
@@ -685,6 +933,7 @@ class Config {
 
 const config = new Config();
 config.parseConfigFile("./assets/vis-config.json");
+// config.parseConfigFile("./assets/vis-config-classical-overlay.json");
 
 
 export { config, AWAY };

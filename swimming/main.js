@@ -19,6 +19,9 @@ import { createEventEditor } from './eventEditor.js';
 import { Calibration } from './calibration.js';
 import { Water } from './water.js';
 import { drawChronoPhotography } from './chronophotography.js';
+import { ArrayBufferTarget, Muxer } from 'webm-muxer';
+
+const offlineRendering = false;
 
 
 function text2html(text) {
@@ -79,14 +82,15 @@ function reset() {
   renderer.reset();
 
   const dx = config.params.simulation.poolSize.x / numSwimmers;
-  let x = config.params.simulation.poolSize.x / 2 - dx / 2;
+  let x = -config.params.simulation.poolSize.x / 2 + dx / 2;
   let i = 0;
   for (let swimmer of config.swimmers) {
     swimmer.body.center.x = x;
+    swimmer.body.initCenter = swimmer.body.center.clone();
     swimmer.startingPoint.x = x;
     // swimmer.parseData("./assets/race-data/" + i + ".csv");
     i++;
-    x -= dx;
+    x += dx;
   }
 }
 
@@ -124,7 +128,7 @@ window.onload = function () {
     gl.matrixMode(gl.MODELVIEW);
 
     config.resetDrawingTexture();
-    draw();
+    if (!offlineRendering) draw();
   }
 
   document.body.appendChild(gl.canvas);
@@ -218,14 +222,147 @@ window.onload = function () {
   var prevTime = new Date().getTime();
   function animate() {
     var nextTime = new Date().getTime();
-    if (!config.paused) {
-      update((nextTime - prevTime) / 1000);
-      draw(nextTime);
-    }
+    update((nextTime - prevTime) / 1000);
+    draw(nextTime);
+
     prevTime = nextTime;
     requestAnimationFrame(animate);
   }
-  requestAnimationFrame(animate);
+  if (!offlineRendering) requestAnimationFrame(animate);
+
+  async function renderOffline(gl, canvas) {
+
+    const target = new ArrayBufferTarget();
+
+    const muxer = new Muxer({
+      target,
+      video: {
+        codec: "V_VP9",
+        width: canvas.width,
+        height: canvas.height
+      }
+    });
+
+    const encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: console.error
+    });
+
+    const fps = 50;
+    const frameDuration = 1_000_000 / fps;
+
+    encoder.configure({
+      codec: "vp09.00.10.08",
+      width: canvas.width,
+      height: canvas.height,
+      framerate: fps,
+      bitrate: 19_000_000
+    });
+
+    const videoDuration = 126; // 126
+
+    const totalFrames = videoDuration * fps;
+
+    // config.launchDemo();
+
+    const batchSize = 100; // e.g., 10 seconds at 30fps
+    for (let batchStart = 0; batchStart < totalFrames; batchStart += batchSize) {
+      const batchEnd = Math.min(batchStart + batchSize, totalFrames);
+
+      for (let frame = batchStart; frame < batchEnd; frame++) {
+        const time = frame / fps;
+        console.log("render offline time : " + time);
+
+        update(1 / fps);
+        await config.updateVideoForOfflineRendering();
+        draw(time);
+
+
+        gl.finish();
+
+        const canvasBitmap = await createImageBitmap(canvas);
+
+        // Create composite canvas
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const ctx = tempCanvas.getContext('2d');
+
+        function fillMultilineText(context, text, x, y, lineHeight) {
+          const lines = text.split(/\r?\n/);
+          for (let i = 0; i < lines.length; i++) {
+            context.fillText(lines[i], x, y + i * lineHeight);
+          }
+        }
+
+        // Draw WebGL canvas first
+        ctx.drawImage(canvasBitmap, 0, 0);
+
+        // Draw specific HTML elements centered
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 55px Arial';
+        ctx.textAlign = 'center';
+        const lineHeight = 60;
+
+        const demoText = document.getElementById('demo-text');
+        if (demoText) {
+          fillMultilineText(ctx, demoText.innerText, canvas.width / 2, canvas.height / 4, lineHeight);
+        }
+
+        // Draw other overlay text as needed
+        const commands = document.getElementById('commands');
+        if (commands && !commands.hidden) {
+          fillMultilineText(ctx, commands.innerText, canvas.width / 2, canvas.height / 2 + 40, lineHeight);
+        }
+
+        const compositeFrame = await createImageBitmap(tempCanvas);
+
+        const videoFrame = new VideoFrame(compositeFrame, {
+          timestamp: Math.round(frame * frameDuration)
+        });
+
+        encoder.encode(videoFrame, {
+          keyFrame: frame % fps === 0
+        });
+
+        compositeFrame.close();
+        canvasBitmap.close();
+      }
+      // release GPU resources
+
+
+      await encoder.flush();
+
+      gl.flush();
+      await new Promise(resolve => setTimeout(resolve, 10)); // give browser breathing room
+    }
+    muxer.finalize();
+
+    const blob = new Blob([target.buffer], { type: "video/webm" });
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "output.webm";
+    a.click();
+
+
+  }
+
+  if (offlineRendering) {
+    gl.canvas.width = 3840;
+    gl.canvas.height = 2160;
+
+    if (config.currentVideo) {
+      config.setRaceTime(0);
+    }
+
+    console.log("before rendering");
+    renderOffline(gl, gl.canvas);
+    console.log("after rendering");
+
+  }
 
   window.onresize = onresize;
 
@@ -476,6 +613,8 @@ window.onload = function () {
   // config.setScene("100m freestyle");
 
   function update(dt) {
+    config.updateDemo(dt);
+    if (config.paused) return;
     if (dt > 1) return;
     frame += dt * 2;
 
@@ -492,9 +631,9 @@ window.onload = function () {
     // Update the water simulation and graphics
     for (let swimmer of config.swimmers) swimmer.update(dt);
     config.updateFloaters(dt);
-    config.water.updateSpheres(dt);
+    if (!config.classicalOverlayEnabled) config.water.updateSpheres(dt);
     for (let i = 0; i < config.params.numSteps; i++) {
-      config.water.stepSimulation(dt);
+      if (!config.classicalOverlayEnabled) config.water.stepSimulation(dt);
     }
 
     renderer.updateCaustics(config.water);
@@ -502,7 +641,7 @@ window.onload = function () {
     config.updateParams();
     slider.value = config.getRaceTime();
     updateFrameRateHTML(dt);
-    config.updateDemo(dt);
+
 
     config.splashParticles.update(dt);
 
@@ -522,7 +661,7 @@ window.onload = function () {
   }
 
   function drawCornerView() {
-    if (!Swimmer.raceHasStarted || !config.params.cornerView.show) return;
+    if (!Swimmer.raceHasStarted || !config.params.cornerView.show || config.classicalOverlayEnabled) return;
     config.cornerView = true;
 
     gl.loadIdentity();
@@ -531,7 +670,7 @@ window.onload = function () {
     gl.rotate(-90, 0, 1, 0);
     gl.translate(0, 0.5, 0);
 
-    const h = gl.canvas.height / 3;
+    const h = gl.canvas.height / 4;
     const w = 16 * h / 9;
     const x = 0;
     const y = gl.canvas.height - h;
@@ -563,6 +702,7 @@ window.onload = function () {
     config.water.updateNormals();
 
     gl.clearColor(.1, .2, .5, 1);
+    gl.clearColor(.94 / 1.5, .92 / 1.5, .84 / 1.5, 1);
     gl.bindFramebuffer(gl.FRAMEBUFFER, config.drawingFrameBuffer);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.loadIdentity();
@@ -588,9 +728,10 @@ window.onload = function () {
     gl.disable(gl.DEPTH_TEST);
     const particlesOption = {};
     // if (config.isSceneSynchronizedSwimming()) particlesOption.showStreaks = false;
-    if (config.params.visualizations.showStreaks || config.params.simulation.splashes.enabled) config.splashParticles.draw(particlesOption);
+    if (!config.classicalOverlayEnabled &&
+      (config.params.visualizations.showStreaks || config.params.simulation.splashes.enabled)) config.splashParticles.draw(particlesOption);
     config.renderVideo();
-    if (config.params.chronoPhotography.available) drawChronoPhotography();
+    if (config.drawingFrameBuffer !== null) drawChronoPhotography();
 
     drawCornerView();
 
